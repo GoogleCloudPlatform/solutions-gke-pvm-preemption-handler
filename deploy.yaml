@@ -1,0 +1,123 @@
+# Copyright 2020 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-std
+  annotations:
+    cloud.google.com/neg: '{"exposed_ports": {"80":{}}}'
+  labels:
+    app: web-std
+spec:
+  ports:
+  - port: 80
+    name: web-std
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: web-std
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web-std
+  name: web-std
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-std
+  template:
+    metadata:
+      labels:
+        app: web-std
+    spec:
+      affinity:
+        nodeAffinity:
+           requiredDuringSchedulingIgnoredDuringExecution:
+             nodeSelectorTerms:
+             - matchExpressions:
+               - key: cloud.google.com/gke-preemptible
+                 operator: DoesNotExist
+      containers:
+      - image: gcr.io/cloud-solutions-images/hello-world
+        imagePullPolicy: Always
+        name: hello-app
+        ports:
+        - protocol: TCP
+          containerPort: 8080
+        lifecycle:
+          preStop:
+            httpGet:
+              path: /prestop
+              port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-pvm
+  annotations:
+    cloud.google.com/neg: '{"exposed_ports":{"80":{}}}'
+  labels:
+    app: web-pvm
+spec:
+    ports:
+    - port: 80
+      name: web-pvm
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: web-pvm
+    type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: web-pvm
+  name: web-pvm
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-pvm
+  template:
+    metadata:
+      labels:
+        app: web-pvm
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+             - matchExpressions:
+               - key: cloud.google.com/gke-preemptible
+                 operator: Exists
+      containers:
+      - image: gcr.io/cloud-solutions-images/hello-world
+        imagePullPolicy: Always
+        name: hello-app
+        ports:
+        - protocol: TCP
+          containerPort: 8080
+        lifecycle:
+          preStop:
+            httpGet:
+              path: /prestop
+              port: 8080

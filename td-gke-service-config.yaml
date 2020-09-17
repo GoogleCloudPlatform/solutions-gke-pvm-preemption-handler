@@ -1,0 +1,43 @@
+# Copyright 2020 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+affinityCookieTtlSec: 0
+backends:
+- balancingMode: RATE
+  capacityScaler: 0.25
+  group: https://www.googleapis.com/compute/v1/projects/[PROJECT_ID]/zones/[ZONE]/networkEndpointGroups/[NEG_NAME_STD]
+  maxRatePerEndpoint: 5.0
+- balancingMode: RATE
+  capacityScaler: 0.75
+  group: https://www.googleapis.com/compute/v1/projects/[PROJECT_ID]/zones/[ZONE]/networkEndpointGroups/[NEG_NAME_PVM]
+  maxRatePerEndpoint: 5.0
+connectionDraining:
+  drainingTimeoutSec: 0
+description: ''
+healthChecks:
+- https://www.googleapis.com/compute/v1/projects/[PROJECT_ID]/global/healthChecks/td-gke-health-check
+kind: compute#backendService
+loadBalancingScheme: INTERNAL_SELF_MANAGED
+name: td-gke-service
+port: 80
+portName: http
+protocol: HTTP
+selfLink: https://www.googleapis.com/compute/v1/projects/[PROJECT_ID]/global/backendServices/td-gke-service
+sessionAffinity: NONE
+timeoutSec: 30
+circuitBreakers:
+  maxRetries: 3
+outlierDetection:
+  consecutiveErrors: 2
+

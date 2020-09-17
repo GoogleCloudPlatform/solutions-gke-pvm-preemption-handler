@@ -1,0 +1,87 @@
+# Copyright 2020 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: delay-kubelet-shutdown
+  name: delay-kubelet-shutdown
+  namespace: default
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: delay-kubelet-shutdown
+  template:
+    metadata:
+      labels:
+        app: delay-kubelet-shutdown
+    spec:
+      tolerations:
+      # Run regardless of any existing taints.
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      affinity:
+        nodeAffinity:
+         # Restrict to preemptible nodes
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-preemptible
+                operator: Exists
+      containers:
+      - env:
+        - name: STARTUP_SCRIPT
+          value: |
+            #! /bin/bash
+            set -o errexit
+            set -o pipefail
+            set -o nounset
+
+            echo "
+                  [Unit]
+                  Description=Delay GKE shutdown
+                  After=kubelet.service
+                  #Optional if continuous monitoring is required
+                  After=docker.service
+                  After=sshd.service
+
+                  [Service]
+                  Type=oneshot
+                  ExecStart=/bin/true
+                  ExecStop=/bin/sleep 30
+                  RemainAfterExit=yes
+
+                  [Install]
+                  WantedBy=multi-user.target" > /etc/systemd/system/delay.service
+
+            systemctl daemon-reload
+            systemctl enable delay.service
+            systemctl start delay.service
+
+        image: gcr.io/google-containers/startup-script:v1
+        imagePullPolicy: Always
+        name: delay-kubelet-shutdown
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            cpu: 10m
+      hostPID: true
+  updateStrategy:
+    type: OnDelete
+
