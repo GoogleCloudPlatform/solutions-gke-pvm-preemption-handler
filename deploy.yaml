@@ -66,6 +66,110 @@ spec:
             httpGet:
               path: /prestop
               port: 8080
+      - image: docker.io/istio/proxyv2:1.2.4
+        imagePullPolicy: IfNotPresent
+        name: istio-proxy
+        ports:
+        - containerPort: 15090
+          name: http-envoy-prom
+          protocol: TCP
+        args:
+        - proxy
+        - sidecar
+        - --domain
+        - $(POD_NAMESPACE).svc.cluster.local
+        - --configPath
+        - /etc/istio/proxy
+        - --binaryPath
+        - /usr/local/bin/envoy
+        - --serviceCluster
+        - $(POD_NAMESPACE)
+        - --drainDuration
+        - 45s
+        - --parentShutdownDuration
+        - 1m0s
+        - --discoveryAddress
+        - trafficdirector.googleapis.com:443
+        - --proxyLogLevel
+        - info
+        - --connectTimeout
+        - 10s
+        - --proxyAdminPort
+        - "15000"
+        - --concurrency
+        - "2"
+        - --statusPort
+        - "15020"
+        env:
+        - name: ISTIO_BOOTSTRAP
+          value: "/var/lib/istio/envoy/gcp_envoy_bootstrap_tmpl.json"
+        - name: ISTIO_META_TRAFFICDIRECTOR_INTERCEPTION_PORT
+          value: "15001"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: INSTANCE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: ISTIO_META_POD_NAME
+          valueFrom:
+            fieldRef:
+            fieldRef:
+              fieldPath: metadata.name
+        resources:
+          limits:
+            cpu: "2"
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsUser: 1337
+        volumeMounts:
+        - mountPath: /etc/istio/proxy
+          name: istio-envoy
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        - -m
+        - REDIRECT
+        - -i
+        - "*"
+        - -x
+        - ""
+        - -d
+        - "15020"
+        env:
+        - name: DISABLE_REDIRECTION_ON_LOCAL_LOOPBACK
+          value: "true"
+        image: docker.io/istio/proxy_init:1.2.4
+        imagePullPolicy: IfNotPresent
+        name: istio-init
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 10Mi
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: istio-envoy
 ---
 apiVersion: v1
 kind: Service
@@ -121,3 +225,107 @@ spec:
             httpGet:
               path: /prestop
               port: 8080
+      - image: docker.io/istio/proxyv2:1.2.4
+        imagePullPolicy: IfNotPresent
+        name: istio-proxy
+        ports:
+        - containerPort: 15090
+          name: http-envoy-prom
+          protocol: TCP
+        args:
+        - proxy
+        - sidecar
+        - --domain
+        - $(POD_NAMESPACE).svc.cluster.local
+        - --configPath
+        - /etc/istio/proxy
+        - --binaryPath
+        - /usr/local/bin/envoy
+        - --serviceCluster
+        - $(POD_NAMESPACE)
+        - --drainDuration
+        - 45s
+        - --parentShutdownDuration
+        - 1m0s
+        - --discoveryAddress
+        - trafficdirector.googleapis.com:443
+        - --proxyLogLevel
+        - info
+        - --connectTimeout
+        - 10s
+        - --proxyAdminPort
+        - "15000"
+        - --concurrency
+        - "2"
+        - --statusPort
+        - "15020"
+        env:
+        - name: ISTIO_BOOTSTRAP
+          value: "/var/lib/istio/envoy/gcp_envoy_bootstrap_tmpl.json"
+        - name: ISTIO_META_TRAFFICDIRECTOR_INTERCEPTION_PORT
+          value: "15001"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: INSTANCE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: ISTIO_META_POD_NAME
+          valueFrom:
+            fieldRef:
+            fieldRef:
+              fieldPath: metadata.name
+        resources:
+          limits:
+            cpu: "2"
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsUser: 1337
+        volumeMounts:
+        - mountPath: /etc/istio/proxy
+          name: istio-envoy
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        - -m
+        - REDIRECT
+        - -i
+        - "*"
+        - -x
+        - ""
+        - -d
+        - "15020"
+        env:
+        - name: DISABLE_REDIRECTION_ON_LOCAL_LOOPBACK
+          value: "true"
+        image: docker.io/istio/proxy_init:1.2.4
+        imagePullPolicy: IfNotPresent
+        name: istio-init
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 10Mi
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: istio-envoy              
